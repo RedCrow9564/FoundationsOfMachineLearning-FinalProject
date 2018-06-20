@@ -1,0 +1,6 @@
+__author__ = "Elad Eatah"
+__copyright__ = "Copyright 2018"
+__license__ = "MIT"
+__version__ = "1.0.1"
+__email__ = "eladeatah@mail.tau.ac.il"
+__status__ = "Development"

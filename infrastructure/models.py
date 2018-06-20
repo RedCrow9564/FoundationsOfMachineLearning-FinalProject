@@ -31,25 +31,48 @@ class _CNNClassifier(Sequential):
 
 def create_model(model_name, classes_num):
 
-    class _TemsorFlowMNISTNet(_CNNClassifier):
-        def __init__(self, classes_num):
+    class _TensorFlowMNISTNet(_CNNClassifier):
+        def __init__(self):
             layers = [
-                Conv2D(filters=32, kernel_size=(5, 5), padding='same', activation='relu'),
+                Conv2D(filters=32, kernel_size=(5, 5), padding='same'),
+                Activation(activation='relu'),
                 MaxPooling2D(pool_size=(2, 2), strides=2),
-                Conv2D(filters=64, kernel_size=(5, 5), padding='same', activation='relu'),
+                Conv2D(filters=64, kernel_size=(5, 5), padding='same'),
+                Activation(activation='relu'),
                 MaxPooling2D(pool_size=(2, 2), strides=2),
                 Flatten(),
-                Dense(units=1024, activation='relu'),
+                Dense(units=1024),
+                Activation(activation='relu'),
                 Dropout(rate=0.4),
-                Dense(units=10, activation='softmax')
+                Dense(units=10),
+                Activation(activation='softmax')
             ]
-            super(_TemsorFlowMNISTNet, self).__init__(layers, classes_num)
+            mnist_classes = 10
+            super(_TensorFlowMNISTNet, self).__init__(layers, mnist_classes)
 
-    # TODO: Implement specific networks here.
+    class _TensorFlowCIFAR10Net(_CNNClassifier):
+        def __init__(self):
+            layers = [
+                Conv2D(filters=32, kernel_size=(5, 5), padding='same'),
+                Activation(activation='relu'),
+                MaxPooling2D(pool_size=(2, 2), strides=2),
+                Conv2D(filters=64, kernel_size=(5, 5), padding='same'),
+                Activation(activation='relu'),
+                MaxPooling2D(pool_size=(2, 2), strides=2),
+                Flatten(),
+                Dense(units=1024),
+                Activation(activation='relu'),
+                Dropout(rate=0.4),
+                Dense(units=10),
+                Activation(activation='softmax')
+            ]
+            cifar10_classes = 10
+            super(_TensorFlowCIFAR10Net, self).__init__(layers, cifar10_classes)
 
     # Add new specific networks here.
     _models_names_to_classes = {
-        'TensorFlow MNIST Net': _TemsorFlowMNISTNet  # Example
+        'TensorFlow MNIST Net': _TensorFlowMNISTNet,
+        'TensorFlow CIFAR10 Net': _TensorFlowCIFAR10Net
     }
 
     selected_model = _models_names_to_classes[model_name]
