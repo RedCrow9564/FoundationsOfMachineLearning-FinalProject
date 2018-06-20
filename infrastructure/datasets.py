@@ -1,15 +1,56 @@
 from tensorflow.python.keras.datasets import mnist, cifar10
+from tensorflow.python.keras.utils import to_categorical
+from tensorflow.python.keras import backend as K
 
 _datasets_from_keras = {
-    'mnist': mnist,
-    'cifar10': cifar10
+    'mnist': {
+        'data': mnist,
+        'data type': 'image',
+        'sample size': (28, 28),
+        'channels': 1,
+        'bits per pixel': 8,
+        'classes count': 10
+    },
+    'cifar10': {
+        'data': cifar10,
+        'data type': 'image',
+        'sample size': (28, 28),
+        'channels': 3,
+        'bits per pixel': 8,
+        'classes count': 10
+    }
 }
+
+def _preprocess_images(images, details):
+    # If the images are gray-scale, the number of channels (1) must be "added" to the size of the samples.
+    if details['channels'] == 1:
+        img_rows, img_cols = details['sample size']
+
+        # The place of the dimension with 1 depends on the backend used by Keras.
+        if K.image_data_format() == 'channels_first':
+            images = images.reshape(images.shape[0], 1, img_rows, img_cols)
+        else:
+            images = images.reshape(images.shape[0], img_rows, img_cols, 1)
+
+    # Normalize pixel values to be in the interval [0, 1]
+    images = images.astype('float32')
+    max_bit_value = 2 ** details['bits per pixel'] - 1
+    images /= max_bit_value
+    return images
 
 
 def create_dataset(dataset_name):
     dataset_as_lower = dataset_name.lower()
     if dataset_as_lower in _datasets_from_keras.keys():
-        (x_train, y_train), (x_test, y_test) = _datasets_from_keras[dataset_as_lower].load_data()
+        data_details = _datasets_from_keras[dataset_as_lower]
+        (x_train, y_train), (x_test, y_test) = data_details['data'].load_data()
+
+        if data_details['data type'] == 'image':
+            x_train = _preprocess_images(x_train, data_details)
+            x_test = _preprocess_images(x_test, data_details)
+
+        y_train = to_categorical(y_train, data_details['classes count'])
+        y_test = to_categorical(y_test, data_details['classes count'])
     else:
         raise IOError("Dataset {0} is NOT supported".format(dataset_name))
 

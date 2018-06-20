@@ -52,6 +52,7 @@ def create_model(model_name, classes_num):
 
     class _TensorFlowCIFAR10Net(_CNNClassifier):
         def __init__(self):
+            # TODO: Replace with the real layers of this network.
             layers = [
                 Conv2D(filters=32, kernel_size=(5, 5), padding='same'),
                 Activation(activation='relu'),
