@@ -8,15 +8,15 @@ _datasets_from_keras = {
         'data type': 'image',
         'sample size': (28, 28),
         'channels': 1,
-        'bits per pixel': 8,
+        'bits per sample': 8,
         'classes count': 10
     },
     'cifar10': {
         'data': cifar10,
         'data type': 'image',
-        'sample size': (28, 28),
+        'sample size': (32, 32),
         'channels': 3,
-        'bits per pixel': 8,
+        'bits per sample': 8,
         'classes count': 10
     }
 }
@@ -34,7 +34,7 @@ def _preprocess_images(images, details):
 
     # Normalize pixel values to be in the interval [0, 1]
     images = images.astype('float32')
-    max_bit_value = 2 ** details['bits per pixel'] - 1
+    max_bit_value = 2 ** details['bits per sample'] - 1
     images /= max_bit_value
     return images
 
