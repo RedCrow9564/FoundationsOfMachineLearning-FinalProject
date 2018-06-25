@@ -1,5 +1,5 @@
 import tensorflow.python.keras.backend as K
-#  TODO: For confusion matrix calculation import it from sklearn.metrics
+from sklearn.metrics import confusion_matrix
 # TODO: Implement these metrics
 
 
