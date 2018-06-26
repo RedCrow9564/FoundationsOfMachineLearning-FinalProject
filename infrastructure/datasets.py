@@ -21,7 +21,8 @@ _datasets_from_keras = {
     }
 }
 
-def _preprocess_images(images, details):
+
+def _pre_process_images(images, details):
     # If the images are gray-scale, the number of channels (1) must be "added" to the size of the samples.
     if details['channels'] == 1:
         img_rows, img_cols = details['sample size']
@@ -46,8 +47,8 @@ def create_dataset(dataset_name):
         (x_train, y_train), (x_test, y_test) = data_details['data'].load_data()
 
         if data_details['data type'] == 'image':
-            x_train = _preprocess_images(x_train, data_details)
-            x_test = _preprocess_images(x_test, data_details)
+            x_train = _pre_process_images(x_train, data_details)
+            x_test = _pre_process_images(x_test, data_details)
 
         y_train = to_categorical(y_train, data_details['classes count'])
         y_test = to_categorical(y_test, data_details['classes count'])
