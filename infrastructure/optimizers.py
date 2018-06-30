@@ -2,7 +2,7 @@
 optimizers.py - Contains all supported optimization methods. create_optimizer is the factory for optimizers creation.
 """
 
-from tensorflow.python.keras import optimizers
+from keras import optimizers
 
 
 def create_optimizer(optimizer_config):

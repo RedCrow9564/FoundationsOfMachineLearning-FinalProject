@@ -1,6 +1,6 @@
-from tensorflow.python.keras.datasets import mnist, cifar10
-from tensorflow.python.keras.utils import to_categorical
-from tensorflow.python.keras import backend as K
+from keras.datasets import mnist, cifar10
+from keras.utils import to_categorical
+from keras import backend as K
 
 _datasets_from_keras = {
     'mnist': {

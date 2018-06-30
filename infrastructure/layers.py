@@ -1,5 +1,5 @@
-from tensorflow.python.keras.layers import Layer, Activation, Flatten, Dense, Conv2D, MaxPooling2D, Dropout
-from tensorflow.python.keras import backend as K
+from keras.layers import Layer, Activation, Flatten, Dense, Conv2D, MaxPooling2D, Dropout
+from keras import backend as K
 
 
 class LocalResponseNormalization(Layer):

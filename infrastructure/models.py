@@ -1,4 +1,4 @@
-from tensorflow.python.keras.models import Sequential
+from keras.models import Sequential
 from infrastructure.layers import Activation, Flatten, Dense, Dropout, Conv2D, MaxPooling2D, LocalResponseNormalization
 from infrastructure.optimizers import create_optimizer
 
@@ -7,7 +7,6 @@ _loss_names_to_funcs = {
 }
 
 
-# TODO: Complete base classifier model.
 class _CNNClassifier(Sequential):
     def __init__(self, layers, classes_num):
         super(_CNNClassifier, self).__init__(layers=layers)
@@ -31,7 +30,7 @@ def create_model(model_name):
         def __init__(self):
             mnist_classes = 10
             layers = [
-                Conv2D(filters=32, kernel_size=(5, 5), padding='same', input_shape=()),
+                Conv2D(filters=32, kernel_size=(5, 5), padding='same', input_shape=(28, 28, 1)),
                 Activation(activation='relu'),
                 MaxPooling2D(pool_size=(2, 2), strides=2),
                 Conv2D(filters=64, kernel_size=(5, 5), padding='same'),
@@ -48,11 +47,10 @@ def create_model(model_name):
 
     class _TensorFlowCIFAR10Net(_CNNClassifier):
         def __init__(self):
-            # TODO: Replace with the real layers of this network.
 
             cifar10_classes = 10
             layers = [
-                Conv2D(32, (3, 3), padding='same', input_shape=x_train.shape[1:]),  # TODO: Correct this red signs...
+                Conv2D(32, (3, 3), padding='same', input_shape=(32, 32, 3)),
                 Activation('relu'),
                 Conv2D(32, (3, 3)),
                 Activation('relu'),
