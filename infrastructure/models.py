@@ -1,4 +1,5 @@
 from keras.models import Sequential
+from keras.callbacks import TensorBoard
 from infrastructure.layers import Activation, Flatten, Dense, Dropout, Conv2D, MaxPooling2D, LocalResponseNormalization
 from infrastructure.optimizers import create_optimizer
 
@@ -11,9 +12,10 @@ class _CNNClassifier(Sequential):
     def __init__(self, layers, classes_num):
         super(_CNNClassifier, self).__init__(layers=layers)
         self._classes_num = classes_num
-        pass
+        self._callbacks = []
 
-    def train(self, data, labels, epochs, batch_size, optimizer_config, loss_func, metrics, log_training):
+    def train(self, data, labels, epochs, batch_size, optimizer_config, loss_func, metrics,
+              log_training, log_tensorboard):
         optimizer = create_optimizer(optimizer_config)
         self.compile(optimizer=optimizer, loss=loss_func, metrics=metrics)
 
@@ -21,7 +23,12 @@ class _CNNClassifier(Sequential):
         if log_training:
             verbose = 1
 
-        super(_CNNClassifier, self).fit(data, labels, batch_size, epochs, verbose)
+        if log_tensorboard:
+            tensorboard_callback = TensorBoard(log_dir='./logs')
+            tensorboard_callback.set_model(self)
+            self._callbacks.append(tensorboard_callback)
+
+        super(_CNNClassifier, self).fit(data, labels, batch_size, epochs, verbose, callbacks=self._callbacks)
 
 
 def create_model(model_name):
