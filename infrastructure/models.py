@@ -1,16 +1,39 @@
 from keras.models import Sequential
 from keras.callbacks import TensorBoard
+from keras.utils import to_categorical
 from keras import backend as K
+import numpy as np
 from infrastructure.layers import Activation, Flatten, Dense, Dropout, Conv2D, MaxPooling2D, LocalResponseNormalization
 from infrastructure.optimizers import create_optimizer
 
 
-# A shared basis for all linear models. All these models inherit this class.
+def _from_categorical(y):
+    return np.argmax(y, axis=1)
+
+
+def get_all_layers_output(model, test_data, learning_phase='Testing'):
+
+    learning_phase_value = 1  # Default for when learning phase is testing
+    if learning_phase == 'Training':
+        learning_phase_value = 0
+
+    layers_output_func = K.function([model.layers[0].input, K.learning_phase()],
+                                    [layer.output for layer in model.layers])
+
+    layers_output = layers_output_func([test_data, learning_phase_value])
+    return layers_output
+
+
 class _CNNClassifier(Sequential):
-    def __init__(self, layers, classes_num, weights_file):
+    """
+    A shared basis for all linear models. All these models inherit this class.
+    """
+    def __init__(self, layers, classes_num, weights_file, labels_list):
         super(_CNNClassifier, self).__init__(layers=layers)
         self._classes_num = classes_num
+        self._labels_list = labels_list
         self._callbacks = []
+        self._predictions_to_labels = np.vectorize(lambda pred: self._labels_list[_from_categorical(pred)])
         if weights_file is not None:
             self.load_weights(weights_file)
 
@@ -28,7 +51,19 @@ class _CNNClassifier(Sequential):
             tensorboard_callback.set_model(self)
             self._callbacks.append(tensorboard_callback)
 
+        labels = to_categorical(labels, self._classes_num)
+        y_val = to_categorical(y_val, self._classes_num)
+
         self.fit(data, labels, batch_size, epochs, verbose, validation_data=(x_val, y_val), callbacks=None)
+
+    def predict(self, x, batch_size=None, verbose=0, steps=None):
+        y_pred = super(_CNNClassifier, self).predict(x, batch_size, verbose, steps)
+        y_pred = self._predictions_to_labels(y_pred)
+        return y_pred
+
+    def evaluate(self, x=None, y=None, batch_size=None, verbose=1, sample_weight=None, steps=None):
+        y = to_categorical(y)
+        return super(_CNNClassifier, self).evaluate(x, y, batch_size, verbose, sample_weight, steps)
 
 
 def create_model(model_name, weights_file=None):
@@ -47,6 +82,7 @@ def create_model(model_name, weights_file=None):
         """
         def __init__(self, initial_weights_file):
             mnist_classes = 10
+            mnist_labels = list(range(mnist_classes))
             layers = [
                 Conv2D(filters=32, kernel_size=(5, 5), padding='same', input_shape=(28, 28, 1), name="First_conv"),
                 Activation(activation='relu', name='First_Relu'),
@@ -61,7 +97,7 @@ def create_model(model_name, weights_file=None):
                 Dense(units=mnist_classes, name='Second_fully_connected'),
                 Activation(activation='softmax', name='Softmax')
             ]
-            super(_TensorFlowMNISTNet, self).__init__(layers, mnist_classes, initial_weights_file)
+            super(_TensorFlowMNISTNet, self).__init__(layers, mnist_classes, initial_weights_file, mnist_labels)
 
     class _TensorFlowCIFAR10Net(_CNNClassifier):
         """
@@ -70,6 +106,7 @@ def create_model(model_name, weights_file=None):
         def __init__(self, initial_weights_file):
 
             cifar10_classes = 10
+            cifar10_labels = list(range(cifar10_classes))
             layers = [
                 Conv2D(32, (3, 3), padding='same', input_shape=(32, 32, 3)),
                 Activation('relu'),
@@ -92,7 +129,7 @@ def create_model(model_name, weights_file=None):
                 Dense(cifar10_classes),
                 Activation('softmax')
             ]
-            super(_TensorFlowCIFAR10Net, self).__init__(layers, cifar10_classes, initial_weights_file)
+            super(_TensorFlowCIFAR10Net, self).__init__(layers, cifar10_classes, initial_weights_file, cifar10_labels)
 
     # A dictionary which matches models names to their matching classes.
     # To add new models, add their name and class here.
@@ -103,8 +140,4 @@ def create_model(model_name, weights_file=None):
 
     selected_model = _models_names_to_classes[model_name]
     model = selected_model(initial_weights_file=weights_file)
-
-    layers_output_func = K.function([model.layers[0].input, K.learning_phase()],
-                                    [layer.output for layer in model.layers])
-
-    return selected_model(initial_weights_file=weights_file), layers_output_func
+    return model

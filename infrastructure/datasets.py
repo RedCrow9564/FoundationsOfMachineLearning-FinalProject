@@ -49,9 +49,6 @@ def create_dataset(dataset_name):
         if data_details['data type'] == 'image':
             x_train = _pre_process_images(x_train, data_details)
             x_test = _pre_process_images(x_test, data_details)
-
-        y_train = to_categorical(y_train, data_details['classes count'])
-        y_test = to_categorical(y_test, data_details['classes count'])
     else:
         raise IOError("Dataset {0} is NOT supported".format(dataset_name))
 
