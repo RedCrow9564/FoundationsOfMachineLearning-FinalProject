@@ -8,7 +8,7 @@ from infrastructure.optimizers import create_optimizer
 
 
 def _from_categorical(y):
-    return np.argmax(y, axis=1)
+    return np.argmax(y, axis=1).astype(int)
 
 
 def get_all_layers_output(model, test_data, learning_phase='Testing'):
@@ -33,7 +33,7 @@ class _CNNClassifier(Sequential):
         self._classes_num = classes_num
         self._labels_list = labels_list
         self._callbacks = []
-        self._predictions_to_labels = np.vectorize(lambda pred: self._labels_list[_from_categorical(pred)])
+        self._predictions_to_labels = np.vectorize(lambda pred: self._labels_list[pred])
         if weights_file is not None:
             self.load_weights(weights_file)
 
@@ -54,11 +54,11 @@ class _CNNClassifier(Sequential):
         labels = to_categorical(labels, self._classes_num)
         y_val = to_categorical(y_val, self._classes_num)
 
-        self.fit(data, labels, batch_size, epochs, verbose, validation_data=(x_val, y_val), callbacks=None)
+        self.fit(data, labels, batch_size, epochs, verbose, validation_data=(x_val, y_val), callbacks=self._callbacks)
 
     def predict(self, x, batch_size=None, verbose=0, steps=None):
         y_pred = super(_CNNClassifier, self).predict(x, batch_size, verbose, steps)
-        y_pred = self._predictions_to_labels(y_pred)
+        y_pred = self._predictions_to_labels(_from_categorical(y_pred))
         return y_pred
 
     def evaluate(self, x=None, y=None, batch_size=None, verbose=1, sample_weight=None, steps=None):
