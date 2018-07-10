@@ -44,7 +44,7 @@ def main():
     for experiment_name, experiment_config in all_experiments.items():
         results, model = perform_experiment(experiment_config)
 
-        weights_file_name = experiment_name + '_' + str(datetime.datetime.today()) + '.h5'
+        weights_file_name = experiment_name + '_' + str(datetime.date.today()) + '.h5'
         weights_file_name.replace(' ', '_')
         weights_file_path = os.path.join(_logs_dir, 'ModelsWeights', weights_file_name)
         model.save_weights(filepath=weights_file_path)
