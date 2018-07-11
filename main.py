@@ -5,12 +5,13 @@ from numpy.random import seed
 from tensorflow import set_random_seed
 import tensorflow as tf
 import time
+import sys, argparse
 
 from infrastructure.metrics import create_metrics
 from infrastructure.loss import create_loss_func
 from infrastructure.models import create_model, get_all_layers_output
 from infrastructure.datasets import create_dataset
-from utils import read_experiments_config, save_model_weights
+from utils import read_experiments_config, save_model_weights, upload_to_s3
 
 __author__ = "Elad Eatah"
 __copyright__ = "Copyright 2018"
@@ -20,15 +21,31 @@ __email__ = "eladeatah@mail.tau.ac.il"
 __status__ = "Development"
 
 
+def _parse_input():
+    parser = argparse.ArgumentParser(description='Performs CNN analysis according to the input config.')
+    parser.add_argument('experiments_file', metavar='e', type=str, nargs='+',
+                        help='A path to the experiments config file.')
+    try:
+        args = parser.parse_args()
+        experiments_config_path = args.experiments_file[0]
+    except SystemExit as e:
+        print(e)
+        experiments_config_path = 'experiments_config.json'
+    return experiments_config_path
+
+
 def main():
-    all_experiments = read_experiments_config()
+
+    experiment_config_path = _parse_input()
+    all_experiments = read_experiments_config(experiment_config_path)
 
     for experiment_name, experiment_config in all_experiments.items():
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
 
             results, model = perform_experiment(experiment_config)
-            save_model_weights(experiment_name, model)
+            weights_file_path = save_model_weights(experiment_name, model)
+            upload_to_s3([], [weights_file_path], [])
 
 
 # TODO: Allow reading initial weights from weights file.
