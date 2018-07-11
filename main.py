@@ -27,13 +27,13 @@ def main():
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
 
-            results, model = perform_experiment(experiment_config, experiment_name)
+            results, model = perform_experiment(experiment_config)
             save_model_weights(experiment_name, model)
 
 
 # TODO: Allow reading initial weights from weights file.
 # TODO: Add inner layers results, only when run by the GPU VM.
-def perform_experiment(experiment_config, experiment_name):
+def perform_experiment(experiment_config):
     initial_seed = 5
     seed(initial_seed)  # Initializing numpy seed.
     set_random_seed(initial_seed)  # Initializing TensorFlow seed.
@@ -44,7 +44,10 @@ def perform_experiment(experiment_config, experiment_name):
     batch_size = experiment_config['Batch size']
 
     x_train, y_train, x_test, y_test = create_dataset(experiment_config['Dataset'])
-    model = create_model(experiment_config['Model name'])
+    initial_weights_file = None
+    if 'Initial weights file' in experiment_config:
+        initial_weights_file = experiment_config['Initial weights file']
+    model = create_model(experiment_config['Model name'], initial_weights_file)
     sampled_metrics = create_metrics(['Total Accuracy', 'Average precision', 'Average recall'])
 
     time.time()
