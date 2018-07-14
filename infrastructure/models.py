@@ -8,6 +8,8 @@ from os import path
 from infrastructure.layers import Activation, Flatten, Dense, Dropout, Conv2D, MaxPooling2D, LocalResponseNormalization
 from infrastructure.optimizers import create_optimizer
 
+_weights_files_dir = path.join('logs', 'ModelsWeights')
+
 
 def _from_categorical(y):
     return np.argmax(y, axis=1).astype(int)
@@ -24,6 +26,7 @@ def get_all_layers_output(model, test_data, learning_phase='Testing'):
 
     layers_output = layers_output_func([test_data, learning_phase_value])
     return layers_output
+
 
 class TrainValTensorBoard(TensorBoard):
     def __init__(self, log_dir='./logs', **kwargs):
@@ -73,6 +76,7 @@ class _CNNClassifier(Sequential):
         self._callbacks = []
         self._predictions_to_labels = np.vectorize(lambda pred: self._labels_list[pred])
         if weights_file is not None:
+            weights_file = path.join(_weights_files_dir, weights_file)
             self.load_weights(weights_file)
 
     def train(self, data, labels, epochs, batch_size, optimizer_config, loss_func, metrics, x_val, y_val,
@@ -85,7 +89,7 @@ class _CNNClassifier(Sequential):
             verbose = 1
 
         if log_tensorboard:
-            tensorboard_callback = TrainValTensorBoard(log_dir='./logs/TensorBoard')
+            tensorboard_callback = TrainValTensorBoard(log_dir='./logs/TensorBoard', write_graph=False)
             tensorboard_callback.set_model(self)
             self._callbacks.append(tensorboard_callback)
 

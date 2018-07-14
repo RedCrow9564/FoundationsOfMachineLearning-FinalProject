@@ -5,7 +5,7 @@ from numpy.random import seed
 from tensorflow import set_random_seed
 import tensorflow as tf
 import time
-import sys, argparse
+import argparse
 
 from infrastructure.metrics import create_metrics
 from infrastructure.loss import create_loss_func
@@ -45,10 +45,9 @@ def main():
 
             results, model = perform_experiment(experiment_config)
             weights_file_path = save_model_weights(experiment_name, model)
-            upload_to_s3([], [weights_file_path], [])
+            #upload_to_s3([], [weights_file_path], [])
 
 
-# TODO: Allow reading initial weights from weights file.
 # TODO: Add inner layers results, only when run by the GPU VM.
 def perform_experiment(experiment_config):
     initial_seed = 5
