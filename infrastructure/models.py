@@ -22,7 +22,7 @@ def get_all_layers_output(model, test_data, learning_phase='Testing'):
         learning_phase_value = 0
 
     layers_output_func = K.function([model.layers[0].input, K.learning_phase()],
-                                    [layer.output for layer in model.layers])
+                                    [(layer.name, layer.output) for layer in model.layers])
 
     layers_output = layers_output_func([test_data, learning_phase_value])
     return layers_output

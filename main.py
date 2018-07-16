@@ -6,6 +6,8 @@ from tensorflow import set_random_seed
 import tensorflow as tf
 import time
 import argparse
+import pandas as pd
+import os
 
 from infrastructure.metrics import create_metrics
 from infrastructure.loss import create_loss_func
@@ -23,14 +25,10 @@ __status__ = "Development"
 
 def _parse_input():
     parser = argparse.ArgumentParser(description='Performs CNN analysis according to the input config.')
-    parser.add_argument('experiments_file', metavar='e', type=str, nargs='+',
+    parser.add_argument('-i', '--experiments_file', default='experiments_config.json', type=str,
                         help='A path to the experiments config file.')
-    try:
-        args = parser.parse_args()
-        experiments_config_path = args.experiments_file[0]
-    except SystemExit as e:
-        print(e)
-        experiments_config_path = 'experiments_config.json'
+    args = parser.parse_args()
+    experiments_config_path = args.experiments_file
     return experiments_config_path
 
 
@@ -95,4 +93,5 @@ def perform_experiment(experiment_config):
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    pd.DataFrame([0, 1, 2, 3]).to_csv(r'logs/out.csv')
