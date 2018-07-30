@@ -15,6 +15,7 @@ def _from_categorical(y):
     return np.argmax(y, axis=1).astype(int)
 
 
+# TODO: Use ALL the model data, not only the test data.
 def get_all_layers_output(model, test_data, learning_phase='Testing'):
 
     learning_phase_value = 1  # Default for when learning phase is testing
@@ -22,7 +23,7 @@ def get_all_layers_output(model, test_data, learning_phase='Testing'):
         learning_phase_value = 0
 
     layers_output_func = K.function([model.layers[0].input, K.learning_phase()],
-                                    [(layer.name, layer.output) for layer in model.layers])
+                                    [layer.output for layer in model.layers])
 
     layers_output = layers_output_func([test_data, learning_phase_value])
     return layers_output

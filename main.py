@@ -6,14 +6,12 @@ from tensorflow import set_random_seed
 import tensorflow as tf
 import time
 import argparse
-import pandas as pd
-import os
 
 from infrastructure.metrics import create_metrics
 from infrastructure.loss import create_loss_func
 from infrastructure.models import create_model, get_all_layers_output
 from infrastructure.datasets import create_dataset
-from utils import read_experiments_config, save_model_weights, upload_to_s3
+from utils import read_experiments_config, save_model_weights, save_layers_logs
 
 __author__ = "Elad Eatah"
 __copyright__ = "Copyright 2018"
@@ -43,7 +41,7 @@ def main():
 
             results, model = perform_experiment(experiment_config)
             weights_file_path = save_model_weights(experiment_name, model)
-            #upload_to_s3([], [weights_file_path], [])
+            save_layers_logs(results['Layers Output'])
 
 
 # TODO: Add inner layers results, only when run by the GPU VM.
@@ -71,6 +69,7 @@ def perform_experiment(experiment_config):
 
     score = model.evaluate(x_test, y_test, verbose=0)
     y_pred = model.predict(x_test, batch_size=batch_size, verbose=0)
+    layers_output = get_all_layers_output(model, x_test, learning_phase='Testing')
 
     results = {
         'Training Time [sec]': learning_time,
@@ -80,18 +79,16 @@ def perform_experiment(experiment_config):
         'Test Mean Recall': score[3],
         'Precision per class': precision_score(y_test, y_pred, average=None),
         'Recall per class': recall_score(y_test, y_pred, average=None),
-        'Confusion Matrix': confusion_matrix(y_test, y_pred)
+        'Confusion Matrix': confusion_matrix(y_test, y_pred),
+        'Layers Output': layers_output
     }
 
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
     print(results['Confusion Matrix'])
-    #output = get_all_layers_output(model, x_test, learning_phase='Testing')
-    #print(output[0])
 
     return results, model
 
 
 if __name__ == '__main__':
-    #main()
-    pd.DataFrame([0, 1, 2, 3]).to_csv(r'logs/out.csv')
+    main()

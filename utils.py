@@ -2,6 +2,8 @@ import json
 import datetime
 from os import path
 import boto3
+import pandas as pd
+import numpy as np
 
 _logs_dir = path.join('logs')
 s3_bucket_name = 'wfk'
@@ -16,7 +18,7 @@ def read_experiments_config(experiments_config_path):
 
 def save_model_weights(experiment_name, model):
     weights_file_name = experiment_name + '_' + str(datetime.date.today()) + '.h5'
-    weights_file_name.replace(' ', '_')
+    weights_file_name = weights_file_name.replace(' ', '_')
     weights_file_path = path.join(_logs_dir, 'ModelsWeights', weights_file_name)
     model.save_weights(filepath=weights_file_path)
     return weights_file_path
@@ -39,6 +41,9 @@ def save_experiment_log():
     pass
 
 
-# TODO: Complete using pandas tutorial.
-def save_layers_logs():
-    pass
+def save_layers_logs(layers_data):
+    for layer_index, layer_output in enumerate(layers_data):
+        data_path = path.join(_logs_dir, 'LayersOutput', 'layer no {0}.txt'.format(layer_index))
+        print(len(layer_output))
+        print(layer_output.ndim)
+        pd.DataFrame(layer_output.flatten()).to_csv(data_path)
