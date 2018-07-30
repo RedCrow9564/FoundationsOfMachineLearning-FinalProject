@@ -6,6 +6,7 @@ from tensorflow import set_random_seed
 import tensorflow as tf
 import time
 import argparse
+import pandas as pd
 
 from infrastructure.metrics import create_metrics
 from infrastructure.loss import create_loss_func
@@ -91,4 +92,5 @@ def perform_experiment(experiment_config):
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    pd.DataFrame([1, 2, 3, 4]).to_csv(r'logs/out.csv', index=False)

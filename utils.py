@@ -46,4 +46,4 @@ def save_layers_logs(layers_data):
         data_path = path.join(_logs_dir, 'LayersOutput', 'layer no {0}.txt'.format(layer_index))
         print(len(layer_output))
         print(layer_output.ndim)
-        pd.DataFrame(layer_output.flatten()).to_csv(data_path)
+        pd.DataFrame(layer_output.flatten()).to_csv(data_path, index=False)
