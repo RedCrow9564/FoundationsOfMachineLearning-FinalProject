@@ -1,22 +1,35 @@
 from keras.models import Sequential
-from keras.callbacks import TensorBoard
 from keras.utils import to_categorical
 from keras import backend as K
 import numpy as np
-import tensorflow as tf
-from os import path
-from infrastructure.layers import Activation, Flatten, Dense, Dropout, Conv2D, MaxPooling2D, LocalResponseNormalization
-from infrastructure.optimizers import create_optimizer
 
-_weights_files_dir = path.join('logs', 'ModelsWeights')
+from infrastructure.layers import Flatten, Dense, Dropout, Conv2D, MaxPooling2D
+from infrastructure.optimizers import create_optimizer
+from infrastructure.loss import create_loss_func
+from infrastructure.metrics import create_metrics
+from utils import tensorboard_logs_path, TrainValTensorBoard
 
 
 def _from_categorical(y):
+    """
+    Function used for de-coding labels, which were encoded in 'one-hot' form,
+    to numerical index in the labels list, i.e [0, 0, 1, 0] --> 2.
+    :param y: Numpy array of one-hot vectors.
+    :return: Integers list of label indices.
+    """
     return np.argmax(y, axis=1).astype(int)
 
 
-# TODO: Use ALL the model data, not only the test data.
-def get_all_layers_output(model, test_data, learning_phase='Testing'):
+def _get_all_layers_output(model, input_data, learning_phase='Testing'):
+    """
+    Function for retrieving a model's inner layers output.
+
+    :param model: The network object.
+    :param input_data: The data which is given as input to the network.
+    :param learning_phase: The 'phase' of the network. This is relevant for networks which have layers
+     that respond differently when training or testing. I.e Dropout layers. Default is Testing
+    :return: A list of lists, which contain each layer's outputs.
+    """
 
     learning_phase_value = 1  # Default for when learning phase is testing
     if learning_phase == 'Training':
@@ -25,64 +38,53 @@ def get_all_layers_output(model, test_data, learning_phase='Testing'):
     layers_output_func = K.function([model.layers[0].input, K.learning_phase()],
                                     [layer.output for layer in model.layers])
 
-    layers_output = layers_output_func([test_data, learning_phase_value])
+    layers_output = layers_output_func([input_data, learning_phase_value])
     return layers_output
-
-
-class TrainValTensorBoard(TensorBoard):
-    def __init__(self, log_dir='./logs', **kwargs):
-        # Make the original `TensorBoard` log to a subdirectory 'training'
-        training_log_dir = path.join(log_dir, 'training')
-        super(TrainValTensorBoard, self).__init__(training_log_dir, **kwargs)
-
-        # Log the validation metrics to a separate subdirectory
-        self.val_log_dir = path.join(log_dir, 'validation')
-
-    def set_model(self, model):
-        # Setup writer for validation metrics
-        self.val_writer = tf.summary.FileWriter(self.val_log_dir)
-        super(TrainValTensorBoard, self).set_model(model)
-
-    def on_epoch_end(self, epoch, logs=None):
-        # Pop the validation logs and handle them separately with
-        # `self.val_writer`. Also rename the keys so that they can
-        # be plotted on the same figure with the training metrics
-        logs = logs or {}
-        val_logs = {k.replace('val_', ''): v for k, v in logs.items() if k.startswith('val_')}
-        for name, value in val_logs.items():
-            summary = tf.Summary()
-            summary_value = summary.value.add()
-            summary_value.simple_value = value.item()
-            summary_value.tag = name
-            self.val_writer.add_summary(summary, epoch)
-        self.val_writer.flush()
-
-        # Pass the remaining logs to `TensorBoard.on_epoch_end`
-        logs = {k: v for k, v in logs.items() if not k.startswith('val_')}
-        super(TrainValTensorBoard, self).on_epoch_end(epoch, logs)
-
-    def on_train_end(self, logs=None):
-        super(TrainValTensorBoard, self).on_train_end(logs)
-        self.val_writer.close()
 
 
 class _CNNClassifier(Sequential):
     """
-    A shared basis for all linear models. All these models inherit this class.
+    A shared basis for all linear models. All CNN models inherit this class.
     """
-    def __init__(self, layers, classes_num, weights_file, labels_list):
+    def __init__(self, layers, classes_num, labels_list, weights_file):
+        """
+        Shared constructor for CNN models.
+
+        :param layers: A list of Keras Layers which is the architecture.
+        :param classes_num: The number of classes this model can predict.
+        :param labels_list: A list of possible labels. Can be numeric or strings. Its length must be classes_num
+        :param weights_file: A file of initial weights to be used in the model.
+            Can be None to use Keras's initialization.
+        """
         super(_CNNClassifier, self).__init__(layers=layers)
         self._classes_num = classes_num
         self._labels_list = labels_list
         self._callbacks = []
         self._predictions_to_labels = np.vectorize(lambda pred: self._labels_list[pred])
         if weights_file is not None:
-            weights_file = path.join(_weights_files_dir, weights_file)
             self.load_weights(weights_file)
 
-    def train(self, data, labels, epochs, batch_size, optimizer_config, loss_func, metrics, x_val, y_val,
+    def train(self, data, labels, epochs, batch_size, optimizer_config, loss_func_name, metrics_names, x_val, y_val,
               log_training, log_tensorboard):
+        """
+        A method for training a model.
+
+        :param data: The input data on which the model is trained.
+        :param labels: The labels of the given input data.
+        :param epochs: Number of epochs to perform in the training.
+        :param batch_size: Number of samples in each batch of the training.
+        :param optimizer_config: A dictionary which contains all the data required to create the optimizer for learning.
+        :param loss_func_name: The loss function on which optimization is performed.
+        :param metrics_names: The statistics which are measured on each epoch of the training.
+        :param x_val: The validation data. Used for plotting TensorBoard statistics, NOT for training.
+        :param y_val: The labels for the validation data.
+        :param log_training: The flag which decides whether to plot the the terminal the training process.
+        :param log_tensorboard: The flag which decides whether to plot to TensorBoard the training process.
+        :return: None.
+        """
         optimizer = create_optimizer(optimizer_config)
+        loss_func = create_loss_func(loss_func_name)
+        metrics = create_metrics(metrics_names)
         self.compile(optimizer=optimizer, loss=loss_func, metrics=metrics)
 
         verbose = 0
@@ -90,7 +92,7 @@ class _CNNClassifier(Sequential):
             verbose = 1
 
         if log_tensorboard:
-            tensorboard_callback = TrainValTensorBoard(log_dir='./logs/TensorBoard', write_graph=False)
+            tensorboard_callback = TrainValTensorBoard(log_dir=tensorboard_logs_path, write_graph=False)
             tensorboard_callback.set_model(self)
             self._callbacks.append(tensorboard_callback)
 
@@ -99,12 +101,43 @@ class _CNNClassifier(Sequential):
 
         self.fit(data, labels, batch_size, epochs, verbose, validation_data=(x_val, y_val), callbacks=self._callbacks)
 
+    def get_layers_output(self, input_data, learning_phase='Testing'):
+        """
+        A method for extracting the output of the inner layers of the model, for a given input.
+        
+        :param input_data: The data which is given as input to the network.
+        :param learning_phase: The 'phase' of the network. This is relevant for networks which have layers
+         that respond differently when training or testing. I.e Dropout layers. Default is Testing
+        :return: A list of lists, which contain each layer's outputs.
+        """
+        return _get_all_layers_output(self, input_data, learning_phase)
+
     def predict(self, x, batch_size=None, verbose=0, steps=None):
+        """
+        An expansion of Keras's predict method- It predicts the 'one-hot' labels for given input samples,
+        and then de-codes it back to the models possible labels.
+        :param x: The input to predict on it.
+        :param batch_size: The size of the batches for each prediction.
+        :param verbose: A flag- 1 for
+        :param steps:
+        :return: List of predictions for each input sample.
+        """
         y_pred = super(_CNNClassifier, self).predict(x, batch_size, verbose, steps)
         y_pred = self._predictions_to_labels(_from_categorical(y_pred))
         return y_pred
 
     def evaluate(self, x=None, y=None, batch_size=None, verbose=1, sample_weight=None, steps=None):
+        """
+        An expansion of Keras's evaluate method- It converts the given labels to one-hot notation,
+        and then it performs Keras's evaluate method, for getting the requested metrics for this model.
+        :param x: The input to predict on it.
+        :param y: The known labels of the given input.
+        :param batch_size: The size of the batches for each prediction.
+        :param verbose: A flag- 1 for
+        :param sample_weight:
+        :param steps:
+        :return: A list of performance metrics requested (in the constructor) for this model.
+        """
         y = to_categorical(y)
         return super(_CNNClassifier, self).evaluate(x, y, batch_size, verbose, sample_weight, steps)
 
@@ -127,52 +160,44 @@ def create_model(model_name, weights_file=None):
             mnist_classes = 10
             mnist_labels = list(range(mnist_classes))
             layers = [
-                Conv2D(filters=32, kernel_size=(5, 5), padding='same', input_shape=(28, 28, 1), name="First_conv"),
-                Activation(activation='relu', name='First_Relu'),
+                Conv2D(filters=32, kernel_size=(5, 5), padding='same', input_shape=(28, 28, 1),
+                       name="First_conv", activation='relu'),
                 MaxPooling2D(pool_size=(2, 2), strides=2, name='First_MaxPool'),
-                Conv2D(filters=64, kernel_size=(5, 5), padding='same', name='Second_conv'),
-                Activation(activation='relu', name='Second_Relu'),
+                Conv2D(filters=64, kernel_size=(5, 5), padding='same', name='Second_conv', activation='relu'),
                 MaxPooling2D(pool_size=(2, 2), strides=2, name='Second_MaxPool'),
                 Flatten(name='Flatten_image_to_vectors_layer'),
-                Dense(units=1024, name='First_fully_connected'),
-                Activation(activation='relu', name='Third_Relu'),
+                Dense(units=1024, name='First_fully_connected', activation='relu'),
                 Dropout(rate=0.4, name='Dropout_layer'),
-                Dense(units=mnist_classes, name='Second_fully_connected'),
-                Activation(activation='softmax', name='Softmax')
+                Dense(units=mnist_classes, name='Second_fully_connected', activation='softmax')
             ]
-            super(_TensorFlowMNISTNet, self).__init__(layers, mnist_classes, initial_weights_file, mnist_labels)
+            super(_TensorFlowMNISTNet, self).__init__(layers, mnist_classes, mnist_labels, initial_weights_file)
 
     class _TensorFlowCIFAR10Net(_CNNClassifier):
         """
         A model based on Keras example:
+        TODO: Complete this comment.
         """
         def __init__(self, initial_weights_file):
 
             cifar10_classes = 10
             cifar10_labels = list(range(cifar10_classes))
             layers = [
-                Conv2D(32, (3, 3), padding='same', input_shape=(32, 32, 3)),
-                Activation('relu'),
-                Conv2D(32, (3, 3)),
-                Activation('relu'),
+                Conv2D(filters=32, kernel_size=(3, 3), padding='same', input_shape=(32, 32, 3), activation='relu'),
+                Conv2D(filters=32, kernel_size=(3, 3), activation='relu'),
                 MaxPooling2D(pool_size=(2, 2)),
-                Dropout(0.25),
+                Dropout(rate=0.25),
 
-                Conv2D(64, (3, 3), padding='same'),
-                Activation('relu'),
-                Conv2D(64, (3, 3)),
-                Activation('relu'),
+                Conv2D(filters=64, kernel_size=(3, 3), padding='same', activation='relu'),
+                Conv2D(filters=64, kernel_size=(3, 3), activation='relu'),
                 MaxPooling2D(pool_size=(2, 2)),
-                Dropout(0.25),
+                Dropout(rate=0.25),
 
                 Flatten(),
-                Dense(512),
-                Activation('relu'),
-                Dropout(0.5),
-                Dense(cifar10_classes),
-                Activation('softmax')
+                Dense(units=512, activation='relu'),
+                Dropout(rate=0.5),
+                Dense(cifar10_classes, activation='softmax')
             ]
-            super(_TensorFlowCIFAR10Net, self).__init__(layers, cifar10_classes, initial_weights_file, cifar10_labels)
+            super(_TensorFlowCIFAR10Net, self).__init__(layers, cifar10_classes, cifar10_labels, initial_weights_file)
 
     # A dictionary which matches models names to their matching classes.
     # To add new models, add their name and class here.
