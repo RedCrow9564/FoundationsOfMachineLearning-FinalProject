@@ -10,7 +10,8 @@ from os import path
 
 from infrastructure.models import create_model
 from infrastructure.datasets import create_dataset
-from utils import read_experiments_config, save_model_weights, save_layers_logs, save_experiment_log, weights_files_path
+from utils import read_experiments_config, save_model_weights, save_layers_logs,\
+    save_experiment_log, weights_files_path, upload_to_s3
 
 __author__ = "Elad Eatah"
 __copyright__ = "Copyright 2018"
@@ -50,10 +51,11 @@ def main():
             sess.run(tf.global_variables_initializer())
 
             results, model = perform_experiment(experiment_config)
-            save_model_weights(experiment_name, model)
-            save_experiment_log(results, experiment_name)
-            save_layers_logs(results['Layers Testing Output'], 'Testing')
-            save_layers_logs(results['Layers Training Output'], 'Training')
+            weights_file_name = save_model_weights(experiment_name, model)
+            results_file = save_experiment_log(results, experiment_name)
+            testing_layers_files = save_layers_logs(results['Layers Testing Output'], 'Testing')
+            training_layers_files = save_layers_logs(results['Layers Training Output'], 'Training')
+            upload_to_s3([], [results_file], [weights_file_name], testing_layers_files + training_layers_files)
 
 
 # TODO: Add inner layers results, only when run by the GPU VM.

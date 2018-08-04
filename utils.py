@@ -43,16 +43,19 @@ def save_model_weights(experiment_name, model):
     return weights_file_path
 
 
-def upload_to_s3(tensorboard_logs, weight_files, experiments_logs):
+def upload_to_s3(tensorboard_logs, experiment_results, weight_files, experiments_logs):
+    credentials = read_experiments_config('credentials.json')
     session = boto3.Session(
-        aws_access_key_id=settings.AWS_SERVER_PUBLIC_KEY,
-        aws_secret_access_key=settings.AWS_SERVER_SECRET_KEY,
+        aws_access_key_id=credentials["aws-access_key_id"],
+        aws_secret_access_key=credentials["aws_secret_access_key"],
     )
     s3 = session.resource('s3')
     bucket = s3.Bucket(s3_bucket_name)
 
     for log in tensorboard_logs:
         bucket.upload_file(log, '{0}/TensorboardLogs/{1}'.format(s3_folder_path, path.basename(log)))
+    for log in experiment_results:
+        bucket.upload_file(log, '{0}/ExperimentsLogs/{1}'.format(s3_folder_path, path.basename(log)))
     for weights in weight_files:
         bucket.upload_file(weights, '{0}/ModelsWeights/{1}'.format(s3_folder_path, path.basename(weights)))
     for experiment_log in experiments_logs:
@@ -67,13 +70,14 @@ def save_experiment_log(results, experiment_name):
 
     :param results: The results dictionary collected in the experiment.
     :param experiment_name: The experiment textual name.
-    :return: None.
+    :return: The results file name.
     """
     data_not_to_save = ['Layers Testing Output', 'Layers Training Output']
     data_to_save = {k: v for k, v in results.items() if k not in data_not_to_save}
     file_name = path.join(experiment_logs_path, '{0} results.json'.format(experiment_name))
     with open(file_name, 'w') as outfile:
         outfile.write(json.dumps(data_to_save, indent=4))
+    return file_name
 
 
 def save_layers_logs(layers_data, data_name):
@@ -81,13 +85,17 @@ def save_layers_logs(layers_data, data_name):
     A function for saving inner layers outputs to a file.
     :param layers_data: The list of all layers outputs.
     :param data_name: A textual description of the data, used in the file's name.
-    :return: None.
+    :return: A list of all files names that were created.
     """
+    all_files = []
     for layer_index, layer_output in enumerate(layers_data):
-        data_path = path.join(layers_logs_path, '{0} layer no {1}.txt'.format(data_name, layer_index))
+        file_name = '{0} layer no {1}.txt'.format(data_name, layer_index)
+        data_path = path.join(layers_logs_path, file_name)
         print(len(layer_output))
         print(layer_output.ndim)
+        all_files.append(file_name)
         pd.DataFrame(layer_output.flatten()).to_csv(data_path, index=False)
+    return all_files
 
 
 class TrainValTensorBoard(TensorBoard):
