@@ -90,7 +90,7 @@ def perform_experiment(experiment_config):
     initial_weights_file = None
     if 'Initial weights file' in experiment_config:
         initial_weights_file = path.join(weights_files_path, experiment_config['Initial weights file'])
-    sampled_metrics = ['Total Accuracy', 'Average precision', 'Average recall']
+    sampled_metrics = experiment_config['Performance metrics']
 
     # Creating the model the experiment will be performed on.
     model = create_model(experiment_config['Model name'], initial_weights_file)
@@ -104,6 +104,7 @@ def perform_experiment(experiment_config):
     # Reading all the performance details of this model, including inner layers outputs.
     score = model.evaluate(x_test, y_test, verbose=0)
     y_pred = model.predict(x_test, batch_size=batch_size, verbose=0)
+    confusion_mat = confusion_matrix(y_test, y_pred)
     layers_training_output = model.get_layers_output(x_train, learning_phase='Testing')
     layers_testing_output = model.get_layers_output(x_test, learning_phase='Testing')
 
@@ -116,14 +117,14 @@ def perform_experiment(experiment_config):
         'Test Mean Recall': score[3],
         'Precision per class': np.array2string(precision_score(y_test, y_pred, average=None)),
         'Recall per class': np.array2string(recall_score(y_test, y_pred, average=None)),
-        'Confusion Matrix': np.array2string(confusion_matrix(y_test, y_pred), separator=','),
+        'Confusion Matrix': str(confusion_mat.tolist()),
         'Layers Training Output': layers_training_output,
         'Layers Testing Output': layers_testing_output
     }
 
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
-    print(results['Confusion Matrix'])
+    print(np.array2string(confusion_mat))
 
     return results, model
 
