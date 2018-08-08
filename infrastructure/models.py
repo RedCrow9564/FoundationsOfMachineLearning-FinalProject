@@ -199,11 +199,32 @@ def create_model(model_name, weights_file=None):
             ]
             super(_TensorFlowCIFAR10Net, self).__init__(layers, cifar10_classes, cifar10_labels, initial_weights_file)
 
+    class _ModifiedMNISTNet(_CNNClassifier):
+        """
+        A model based on an example from TensorFlow: https://www.tensorflow.org/tutorials/layers
+        """
+        def __init__(self, initial_weights_file):
+            mnist_classes = 10
+            mnist_labels = list(range(mnist_classes))
+            layers = [
+                Conv2D(filters=32, kernel_size=(5, 5), padding='same', input_shape=(28, 28, 1),
+                       name="First_conv"),
+                MaxPooling2D(pool_size=(2, 2), strides=2, name='First_MaxPool'),
+                Conv2D(filters=64, kernel_size=(5, 5), padding='same', name='Second_conv'),
+                MaxPooling2D(pool_size=(2, 2), strides=2, name='Second_MaxPool'),
+                Flatten(name='Flatten_image_to_vectors_layer'),
+                Dense(units=1024, name='First_fully_connected'),
+                Dropout(rate=0.4, name='Dropout_layer'),
+                Dense(units=mnist_classes, name='Second_fully_connected', activation='softmax')
+            ]
+            super(_ModifiedMNISTNet, self).__init__(layers, mnist_classes, mnist_labels, initial_weights_file)
+
     # A dictionary which matches models names to their matching classes.
     # To add new models, add their name and class here.
     _models_names_to_classes = {
         'TensorFlow MNIST Net': _TensorFlowMNISTNet,
-        'TensorFlow CIFAR10 Net': _TensorFlowCIFAR10Net
+        'TensorFlow CIFAR10 Net': _TensorFlowCIFAR10Net,
+        'Modified MNIST Net': _ModifiedMNISTNet
     }
 
     selected_model = _models_names_to_classes[model_name]
