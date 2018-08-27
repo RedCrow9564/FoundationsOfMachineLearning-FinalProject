@@ -49,16 +49,14 @@ def main():
     for experiment_name, experiment_config in all_experiments.items():
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
-
             results, model = perform_experiment(experiment_config)
             weights_file_name = save_model_weights(experiment_name, model)
             results_file = save_experiment_log(results, experiment_name)
             testing_layers_files = save_layers_logs(results['Layers Testing Output'], 'Testing')
             training_layers_files = save_layers_logs(results['Layers Training Output'], 'Training')
-            upload_to_s3([], [results_file], [weights_file_name], testing_layers_files + training_layers_files)
+            upload_to_s3([], [], [results_file], [weights_file_name], testing_layers_files + training_layers_files)
 
 
-# TODO: Add inner layers results, only when run by the GPU VM.
 def perform_experiment(experiment_config):
     """
     The main function which performs the requested experiment.
@@ -89,6 +87,7 @@ def perform_experiment(experiment_config):
     batch_size = experiment_config['Batch size']
 
     x_train, y_train, x_test, y_test = create_dataset(experiment_config['Dataset'])
+
     initial_weights_file = None
     if 'Initial weights file' in experiment_config:
         initial_weights_file = path.join(weights_files_path, experiment_config['Initial weights file'])

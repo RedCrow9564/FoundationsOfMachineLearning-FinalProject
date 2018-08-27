@@ -1,21 +1,20 @@
 import json
 import datetime
-from os import path
+import os
 import boto3
 import pandas as pd
 from keras.callbacks import TensorBoard
 import tensorflow as tf
 
 _logs_dir = 'logs'
-weights_files_path = path.join(_logs_dir, 'ModelsWeights')
-experiment_logs_path = path.join(_logs_dir, 'ExperimentLogs')
-layers_logs_path = path.join(_logs_dir, 'LayersOutput')
-tensorboard_logs_path = path.join(_logs_dir, 'TensorBoard')
+weights_files_path = os.path.join(_logs_dir, 'ModelsWeights')
+experiment_logs_path = os.path.join(_logs_dir, 'ExperimentLogs')
+layers_logs_path = os.path.join(_logs_dir, 'LayersOutput')
+tensorboard_logs_path = os.path.join(_logs_dir, 'TensorBoard')
 s3_bucket_name = 'wfk'
 s3_folder_path = 'EladEdenProject-MFML2018'
 
 
-# TODO: Complete commenting this file.
 def read_experiments_config(experiments_config_path):
     """
     A for opening the JSON config file for the performed experiments.
@@ -38,29 +37,44 @@ def save_model_weights(experiment_name, model):
     """
     weights_file_name = experiment_name + '_' + str(datetime.date.today()) + '.h5'
     weights_file_name = weights_file_name.replace(' ', '_')
-    weights_file_path = path.join(weights_files_path, weights_file_name)
+    weights_file_path = os.path.join(weights_files_path, weights_file_name)
     model.save_weights(filepath=weights_file_path)
     return weights_file_path
 
 
-def upload_to_s3(tensorboard_logs, experiment_results, weight_files, experiments_logs):
+def upload_to_s3(tensorboard_training_logs, tensorboard_validation_logs, experiment_results, weight_files,
+                 experiments_logs):
+    """
+    A function which uploads all the logs to Amazon's S3 service. All files are olaced in pre-determined folders.
+
+    :param tensorboard_training_logs: List of Tensorboard logs for training data.
+    :param tensorboard_validation_logs: List of Tensorboard logs for validation data.
+    :param experiment_results: List of all experiment results paths.
+    :param weight_files: List of all weight files.
+    :param experiments_logs: List of all layers outputs.
+    :return:
+    """
     credentials = read_experiments_config('credentials.json')
     session = boto3.Session(
-        aws_access_key_id=credentials["aws-access_key_id"],
-        aws_secret_access_key=credentials["aws_secret_access_key"],
+        aws_access_key_id=credentials['aws-access_key_id'],
+        aws_secret_access_key=credentials['aws-secret_access_key_id'],
     )
     s3 = session.resource('s3')
     bucket = s3.Bucket(s3_bucket_name)
 
-    for log in tensorboard_logs:
-        bucket.upload_file(log, '{0}/TensorboardLogs/{1}'.format(s3_folder_path, path.basename(log)))
+    for log in tensorboard_training_logs:
+        log_path = os.path.join(tensorboard_logs_path, 'training', log)
+        bucket.upload_file(log_path, '{0}/TensorboardLogs/training/{1}'.format(s3_folder_path, os.path.basename(log)))
+    for log in tensorboard_validation_logs:
+        log_path = os.path.join(tensorboard_logs_path, 'validation', log)
+        bucket.upload_file(log_path, '{0}/TensorboardLogs/validation/{1}'.format(s3_folder_path, os.path.basename(log)))
     for log in experiment_results:
-        bucket.upload_file(log, '{0}/ExperimentsLogs/{1}'.format(s3_folder_path, path.basename(log)))
+        bucket.upload_file(log, '{0}/ExperimentsLogs/{1}'.format(s3_folder_path, os.path.basename(log)))
     for weights in weight_files:
-        bucket.upload_file(weights, '{0}/ModelsWeights/{1}'.format(s3_folder_path, path.basename(weights)))
+        bucket.upload_file(weights, '{0}/ModelsWeights/{1}'.format(s3_folder_path, os.path.basename(weights)))
     for experiment_log in experiments_logs:
-        s3_path = path.join('{0}', 'LayersOutput', '{1}').format(s3_folder_path, path.basename(experiment_log))
-        local_path = path.join(_logs_dir, 'LayersOutput', '{0}').format(path.basename(experiment_log))
+        s3_path = os.path.join('{0}', 'LayersOutput', '{1}').format(s3_folder_path, os.path.basename(experiment_log))
+        local_path = os.path.join(_logs_dir, 'LayersOutput', '{0}').format(os.path.basename(experiment_log))
         bucket.upload_file(local_path, s3_path)
 
 
@@ -74,7 +88,7 @@ def save_experiment_log(results, experiment_name):
     """
     data_not_to_save = ['Layers Testing Output', 'Layers Training Output']
     data_to_save = {k: v for k, v in results.items() if k not in data_not_to_save}
-    file_name = path.join(experiment_logs_path, '{0} results.json'.format(experiment_name))
+    file_name = os.path.join(experiment_logs_path, '{0} results.json'.format(experiment_name))
     with open(file_name, 'w') as outfile:
         outfile.write(json.dumps(data_to_save, indent=4))
     return file_name
@@ -90,11 +104,12 @@ def save_layers_logs(layers_data, data_name):
     all_files = []
     for layer_index, layer_output in enumerate(layers_data):
         file_name = '{0} layer no {1}.txt'.format(data_name, layer_index)
-        data_path = path.join(layers_logs_path, file_name)
+        data_path = os.path.join(layers_logs_path, file_name)
         print(len(layer_output))
         print(layer_output.ndim)
         all_files.append(file_name)
-        pd.DataFrame(layer_output.flatten()).to_csv(data_path, index=False)
+        output_in_format = layer_output.reshape((layer_output.shape[0], -1))
+        pd.DataFrame(output_in_format).to_csv(data_path, index=False, header=False, index_label=False, sep=' ')
     return all_files
 
 
@@ -107,11 +122,11 @@ class TrainValTensorBoard(TensorBoard):
     """
     def __init__(self, log_dir, **kwargs):
         # Make the original `TensorBoard` log to a subdirectory 'training'
-        training_log_dir = path.join(log_dir, 'training')
+        training_log_dir = os.path.join(log_dir, 'training')
         super(TrainValTensorBoard, self).__init__(training_log_dir, **kwargs)
 
         # Log the validation metrics to a separate subdirectory
-        self.val_log_dir = path.join(log_dir, 'validation')
+        self.val_log_dir = os.path.join(log_dir, 'validation')
         self.val_writer = None
 
     def set_model(self, model):

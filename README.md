@@ -27,7 +27,11 @@ conda install package_name
 ```
 
 Some installation may require admin privilege.
-See each package dependecies for further explanations.
+See each package dependencies for further explanations.
+## Deployment
+All logs created in this program are uploaded to specific folders in Amazon's S3 service.
+As a result, those who wish to run this program MUST acquire (somehow) a json file named credentials.json.
+This file must contain the AWS user public and private keys. 
 
 ## Running this code
 Running may be performed using terminal commands:
@@ -63,11 +67,12 @@ The experiment configuration file is optional. If not given as input,
 
 ## Authors
 
-* **Elad Eatah**
+* **Elad Eatah**- A MSc student at the school of
+mathematical sciences, Tel-Aviv University.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE) file for details
 
 ## Acknowledgments
 
