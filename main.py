@@ -3,6 +3,7 @@
 from sklearn.metrics import confusion_matrix, precision_score, recall_score
 from tensorflow import set_random_seed
 import tensorflow as tf
+import json
 import time
 import argparse
 import numpy as np
@@ -18,7 +19,7 @@ __copyright__ = "Copyright 2018"
 __license__ = "MIT"
 __version__ = "1.0.1"
 __email__ = "eladeatah@mail.tau.ac.il"
-__status__ = "Development"
+__status__ = "Production"
 
 
 def _parse_input():
@@ -51,9 +52,18 @@ def main():
             sess.run(tf.global_variables_initializer())
             results, model = perform_experiment(experiment_config)
             weights_file_name = save_model_weights(experiment_name, model)
-            results_file = save_experiment_log(results, experiment_name)
             testing_layers_files = save_layers_logs(results['Layers Testing Output'], 'Testing')
             training_layers_files = save_layers_logs(results['Layers Training Output'], 'Training')
+
+            results.pop('Layers Training Output')
+            results.pop('Layers Testing Output')
+            print("Testing Data Confusion Matrix")
+            print(np.array2string(results['Confusion Matrix']))
+            results['Confusion Matrix'] = str(results['Confusion Matrix'].tolist())
+            print("Experiment Results:")
+            print(json.dumps(results, indent=2, sort_keys=True))
+
+            results_file = save_experiment_log(results, experiment_name)
             upload_to_s3([], [], [results_file], [weights_file_name], testing_layers_files + training_layers_files)
 
 
@@ -95,6 +105,7 @@ def perform_experiment(experiment_config):
 
     # Creating the model the experiment will be performed on.
     model = create_model(experiment_config['Model name'], initial_weights_file)
+    model.summary()
 
     # Train the new model. Training time is measured.
     start_time = time.time()
@@ -103,7 +114,8 @@ def perform_experiment(experiment_config):
     learning_time = time.time() - start_time
 
     # Reading all the performance details of this model, including inner layers outputs.
-    score = model.evaluate(x_test, y_test, verbose=0)
+    train_score = model.evaluate(x_train, y_train, verbose=0)
+    test_score = model.evaluate(x_test, y_test, verbose=0)
     y_pred = model.predict(x_test, batch_size=batch_size, verbose=0)
     confusion_mat = confusion_matrix(y_test, y_pred)
     layers_training_output = model.get_layers_output(x_train, learning_phase='Testing')
@@ -112,20 +124,20 @@ def perform_experiment(experiment_config):
     # Saving all results to a single dictionary. Later it will be saved to external files.
     results = {
         'Training Time [sec]': learning_time,
-        'Test Loss': score[0],
-        'Test Accuracy': score[1],
-        'Test Mean Precision': score[2],
-        'Test Mean Recall': score[3],
+        'Test Loss': test_score[0],
+        'Test Accuracy': test_score[1],
+        'Test Mean Precision': test_score[2],
+        'Test Mean Recall': test_score[3],
         'Precision per class': np.array2string(precision_score(y_test, y_pred, average=None)),
         'Recall per class': np.array2string(recall_score(y_test, y_pred, average=None)),
-        'Confusion Matrix': str(confusion_mat.tolist()),
+        'Confusion Matrix': confusion_mat,
         'Layers Training Output': layers_training_output,
-        'Layers Testing Output': layers_testing_output
+        'Layers Testing Output': layers_testing_output,
+        'Train Loss': train_score[0],
+        'Train Accuracy': train_score[1],
+        'Train Mean Precision': train_score[2],
+        'Train Mean Recall': train_score[3]
     }
-
-    print('Test loss:', score[0])
-    print('Test accuracy:', score[1])
-    print(np.array2string(confusion_mat))
 
     return results, model
 

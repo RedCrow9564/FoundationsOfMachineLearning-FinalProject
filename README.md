@@ -13,7 +13,7 @@ This code is based on Python 3, using:
  - Pandas, for saving layers outputs as csv files.
  - boto3
  
- and their respectful dependecies.
+ and their respectful dependencies.
  
 ### Installing dependencies
  

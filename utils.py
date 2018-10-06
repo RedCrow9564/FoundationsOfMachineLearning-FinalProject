@@ -108,8 +108,10 @@ def save_layers_logs(layers_data, data_name):
         print(len(layer_output))
         print(layer_output.ndim)
         all_files.append(file_name)
+        print(layer_output.shape)
         output_in_format = layer_output.reshape((layer_output.shape[0], -1))
-        pd.DataFrame(output_in_format).to_csv(data_path, index=False, header=False, index_label=False, sep=' ')
+        df = pd.DataFrame(output_in_format)
+        df.to_csv(data_path, index=False, header=False, index_label=False, sep=' ')
     return all_files
 
 

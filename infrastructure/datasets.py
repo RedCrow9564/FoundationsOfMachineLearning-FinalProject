@@ -53,7 +53,7 @@ def create_dataset(dataset_name):
     """
     A factory for datasets.
 
-    :param dataset_name: The name of ther requested dataset.
+    :param dataset_name: The name of their requested dataset.
     :return: The training samples and labels and the testing samples and labels for the requested dataset.
     """
     dataset_as_lower = dataset_name.lower()
